@@ -1,0 +1,70 @@
+<?php
+/**
+ * @name Context Condition: Mobile Detection
+ * @file context_condition_detect_mobile.module
+ * @category Cache Control
+ * @copyright 2011 Blue Tent Marketing
+ * @author Paul T. Huntsberger <paul@bluetent.com>
+ * @package Context
+ * @version 1.0.beta1
+ *
+ * This module creates a context reaction to control if Drupal's core cache is to be used or not.
+ */
+
+/**
+ * @internal definitions.
+ */
+define("CONTEXT_CONDITION_DETECT_MOBILE_MODULE_PATH", drupal_get_path('module', 'context_condition_detect_mobile'));
+
+/**
+ * Implementation of hook_init().
+ */
+function context_condition_detect_mobile_init() {
+  $plugin = context_get_plugin('condition', 'context_condition_detect_mobile');
+  kpr('Working');
+  if (is_object($plugin)) {
+    $plugin->execute();
+  }
+}
+
+/**
+ * Implementation of hook_ctools_plugin_api().
+ * @internal Notify CTools that we'll be using the plugin API with Context module.
+ */
+function context_condition_detect_mobile_ctools_plugin_api($module, $api) {
+  if ($module == 'context' && $api == 'plugins') {
+    return array('version' => 3);
+  }
+}
+
+/**
+ * Implementation of hook_context_plugins().
+ * @internal CTools plugin API hook for Context.
+ */
+function context_condition_detect_mobile_context_plugins() {
+  $plugins = array();
+  $plugins['context_condition_detect_mobile'] = array(
+    'handler' => array(
+      'path'   =>  CONTEXT_CONDITION_DETECT_MOBILE_MODULE_PATH.'/plugins',
+      'file'   => 'context_condition_detect_mobile.inc',
+      'class'  => 'context_condition_detect_mobile',
+      'parent' => 'context_condition',
+    ),
+  );
+  return $plugins;
+}
+
+/**
+ * Implementation of hook_context_registry().
+ * @internal Registry hook for conditions & reactions.
+ */
+function context_condition_detect_mobile_context_registry() {
+  return array(
+    'conditions' => array(
+      'context_condition_detect_mobile' => array(
+        'title'  => t('Detect Mobile'),
+        'plugin' => 'context_condition_detect_mobile',
+      ),
+    ),
+  );
+}
