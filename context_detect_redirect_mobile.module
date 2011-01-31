@@ -1,0 +1,133 @@
+<?php
+/**
+ * @name Context: Mobile Detection
+ * @file context_detect_redirect_mobile.module
+ * @category Cache Control
+ * @copyright 2011 Blue Tent Marketing
+ * @author Paul T. Huntsberger <paul@bluetent.com>
+ * @package Context
+ * @version 1.0.beta1
+ *
+ * This module creates a context reaction to control if Drupal's core cache is to be used or not.
+ */
+
+/**
+ * @internal definitions.
+ */
+define("CONTEXT_DETECT_REDIRECT_MOBILE_MODULE_PATH", drupal_get_path('module', 'context_detect_redirect_mobile'));
+
+/**
+ * Implementation of hook_init().
+ */
+function context_detect_redirect_mobile_init() {
+  //Condition Plug-In. This handles mobile detection with exclusion list.
+  $plugin = context_get_plugin('condition', 'context_condition_detect_mobile');
+  if (is_object($plugin)) {
+    $plugin->execute();
+  }
+  //Reaction Plug In. Redirects to the mobile url of your choice.
+  $plugin = context_get_plugin('reaction', 'context_reaction_redirect_to_mobile');
+  if (is_object($plugin)) {
+    $plugin->execute();
+  }
+}
+
+/**
+ * Implementation of hook_ctools_plugin_api().
+ * @internal Notify CTools that we'll be using the plugin API with Context module.
+ */
+function context_detect_redirect_mobile_ctools_plugin_api($module, $api) {
+  if ($module == 'context' && $api == 'plugins') {
+    return array('version' => 3);
+  }
+}
+
+/**
+ * Implementation of hook_context_plugins().
+ * @internal CTools plugin API hook for Context.
+ */
+function context_detect_redirect_mobile_context_plugins() {
+  //Set our plug-ins array as empty, if for some reason a plug in fails, the empty array will stop unwanted messages.
+  $plugins = array();
+  //Condition: Detect Mobile Devices.
+  $plugins['context_condition_detect_mobile'] = array(
+    'handler' => array(
+      'path'   =>  CONTEXT_DETECT_REDIRECT_MOBILE_MODULE_PATH.'/plugins',
+      'file'   => 'context_condition_detect_mobile.inc',
+      'class'  => 'context_condition_detect_mobile',
+      'parent' => 'context_condition',
+    ),
+  );
+  //Reaction: Redirect To Mobile URL.
+  $plugins['context_reaction_redirect_to_mobile'] = array(
+    'handler' => array(
+      'path'   =>  CONTEXT_DETECT_REDIRECT_MOBILE_MODULE_PATH.'/plugins',
+      'file'   => 'context_reaction_redirect_to_mobile.inc',
+      'class'  => 'context_reaction_redirect_to_mobile',
+      'parent' => 'context_reaction',
+    ),
+  );
+  return $plugins;
+}
+
+/**
+ * Implementation of hook_context_registry().
+ * @internal Registry hook for conditions & reactions.
+ */
+function context_detect_redirect_mobile_context_registry() {
+  return array(
+    //Condition for handling the mobile detection.
+    'conditions' => array(
+      'context_condition_detect_mobile' => array(
+        'title'  => t('Detect Mobile'),
+        'plugin' => 'context_condition_detect_mobile',
+      ),
+    ),
+    //Reaction for handleing mobile redirection.
+    'reactions' => array(
+      'context_reaction_redirect_to_mobile' => array(
+        'title'  => t('Redirect Mobile URL'),
+        'plugin' => 'context_reaction_redirect_to_mobile',
+      ),
+    ),
+  );
+}
+
+/**
+ * @name _redirect_to_mobile_validate($element, &$form_state)
+ * This is taken directly from the menu system, so we have their validation, but has been ported
+ * Our validation element, so that we can capture bad URL's or internal url's that are not valid.
+ * @param <type> $element
+ * @param <type> $form_state
+ */
+function _redirect_to_mobile_validate($element, &$form_state) {
+  $item['link_path'] = &$form_state['values']['reactions']['plugins']['context_reaction_redirect_to_mobile']['redirect_to_mobile'];
+  $normal_path = drupal_get_normal_path($item['link_path']);
+  if ($item['link_path'] != $normal_path) {
+    drupal_set_message(t('The menu system stores system paths only, but will use the URL alias for display. %link_path has been stored as %normal_path', array('%link_path' => $item['link_path'], '%normal_path' => $normal_path)));
+    $item['link_path'] = $normal_path;
+  }
+  if (!menu_path_is_external($item['link_path'])) {
+    $parsed_link = parse_url($item['link_path']);
+    if (isset($parsed_link['query'])) {
+      $item['options']['query'] = $parsed_link['query'];
+    }
+    else {
+      // Use unset() rather than setting to empty string
+      // to avoid redundant serialized data being stored.
+      unset($item['options']['query']);
+    }
+    if (isset($parsed_link['fragment'])) {
+      $item['options']['fragment'] = $parsed_link['fragment'];
+    }
+    else {
+      unset($item['options']['fragment']);
+    }
+    if ($item['link_path'] != $parsed_link['path']) {
+      $item['link_path'] = $parsed_link['path'];
+    }
+  }
+  if (!trim($item['link_path']) || !menu_valid_path($item)) {
+    form_set_error('link_path', t("The path '@link_path' is either invalid or you do not have access to it. Please try setting another path.", array('@link_path' => $item['link_path'])));
+  }
+}

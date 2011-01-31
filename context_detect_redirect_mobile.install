@@ -3,12 +3,12 @@
 /**
  * Implementation of hook_install().
  */
-function context_condition_detect_mobile_install() {
+function context_detect_redirect_mobile_install() {
   // Set weight to 99 so we're one of the last modules to run.
-  db_query("UPDATE {system} SET weight = 99 WHERE name = 'context_condition_detect_mobile'");
+  db_query("UPDATE {system} SET weight = 99 WHERE name = 'context_detect_redirect_mobile'");
 }
 
-function context_condition_detect_mobile_uninstall() {
+function context_detect_redirect_mobile_uninstall() {
   //Clear the page cache for the whole site, just in case out cache control has been too aggressive.
   cache_clear_all(NULL, 'cache_page', '*');
 }

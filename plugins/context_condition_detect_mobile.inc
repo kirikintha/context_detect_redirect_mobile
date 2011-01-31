@@ -1,58 +1,173 @@
 <?php
-// $Id: context_reaction_detect_mobile.inc,v 1.1.2.2 2010/10/25 18:47:40 brynbellomy Exp $
-
 /**
- * Expose themes as context reactions.
+ * Expose mobile detection as a context condition.
  */
 class context_condition_detect_mobile extends context_condition {
   /**
-   * Allow admins to choose the theme to be set.
+   * Omit condition values. We will provide a custom input form for our conditions.
+   */
+  function condition_values() {
+    return array(
+     1 => t('Enable Mobile Detection'),
+    );
+  }
+  /**
+   * Override of condition_form().
+   * Create our mobile devices form with grouped checkboxes.
+   */
+  function condition_form($context) {
+    $form = parent::condition_form($context);
+    $form['#default_value'] = array(1);
+    return $form;
+  }
+
+   /**
+   * Override of condition_form().
+   * Create our mobile devices form with grouped checkboxes.
    */
   function options_form($context) {
-    //Radio Options. Shows a list of devices to ignore detection.
-    $devices = array();
-    if (module_exists('wurfl')) {
-      $query  = db_query("SELECT did, id, brand_name, model_name, capabilities FROM {wurfl_devices}
-        WHERE model_name != ''
-        GROUP BY model_name
-        ORDER BY id, model_name ASC
-      ");
-      //Lopo through devices, and determine if it should be allowed in this list. If it is a wireless device, has HTML support or is a touch screen or is a tablet then we add it into this list.
-      while ($device = db_fetch_object($query)) {
-        $capabilities = unserialize($device->capabilities);
-        if ($capabilities['product_info']['is_tablet'] || $capabilities['product_info']['is_wireless_device'] || $capabilities['product_info']['pointing_method'] || $capabilities['product_info']['device_claims_web_support']) {
-          $devices[$device->id] = t($device->model_name);
-        }
-      }
-    }
-    //If we have empty devices, then something has been set wrong. set a drupal message.
-    if (empty($devices)) {
-      $MSG = 'There are no devices to detect, please make sure that you have updated WURFL and make a test.';
-      drupal_set_message(t($MSG), 'error');
-    }
-    //Form.
+    drupal_add_css(CONTEXT_DETECT_REDIRECT_MOBILE_MODULE_PATH .'/css/admin-styles.css');
+    drupal_add_js(CONTEXT_DETECT_REDIRECT_MOBILE_MODULE_PATH .'/js/behaviors.form.js');
+    // Start Form.
     $form = array(
       '#tree'    => TRUE,
       '#title'   => t('Mobile: Detection'),
-      'detect_mobile' => array(
-        '#title'         => t('Exclusion List.'),
-        '#description'   => t('To ignore a device, check the box next to it.'),
-        '#type'          => 'checkboxes',
-        '#options'       => $devices,
-        '#default_value' => isset($values['detect_mobile']) ? $values['detect_mobile'] : array(),
-      ),
     );
+    //Radio Options. Shows a list of devices to ignore detection.
+    $devices = $this->devices();
+    if (module_exists('wurfl')) {
+      $form = $this->devices($form, $context, 'form');
+    }
+    //If we have empty devices, then something has been set wrong. Indicate so.
+    if (empty($devices)) {
+      $MSG = 'There are no devices to detect, please make sure that you have updated WURFL and made a test.';
+      $form['detect_mobile'] = array(
+        '#value' => t($MSG),
+        '#attributes' => array('class' => 'context-condition-detect-mobile-options-form-error'),
+      );
+    }
+    unset($devices);
     return $form;
   }
 
   /**
-   * Set the active theme.
+   * Override of execute().
    */
   function execute() {
-    foreach (context_active_contexts() as $context) {
-      if (isset($context->reactions[$this->plugin]['detect_mobile'])) {
-        //If we have our device detection, then let's look at it.
-        
+    if ($this->condition_used()) {
+       foreach ($this->get_contexts() as $context) {
+        //Get the options, and then check our device.
+        $options = $this->fetch_from_context($context, 'options');
+        //Detect if we have a mobile device or not.
+        $success = $this->detect($options['detect_mobile']);
+        if ($success === TRUE) {
+          $this->condition_met($context);
+        }
+      }
+    }
+  }
+
+  /**
+   * @name devices($form = array(), $context = NULL, $op = NULL)
+   * @param <type> $form
+   * @param <type> $context
+   * @param <type> $op
+   * @return <type>
+   */
+  protected function devices($form = array(), $context = NULL, $op = NULL) {
+    $options = $this->fetch_from_context($context, 'options');
+    //Set our query.
+    $query  = db_query("SELECT did, id, brand_name, model_name, fall_back, capabilities FROM {wurfl_devices}
+      WHERE model_name != ''
+      GROUP BY model_name
+      ORDER BY id, model_name ASC
+    ");
+    //Lopo through devices, and determine if it should be allowed in this list. If it is a wireless device, has HTML support or is a touch screen or is a tablet then we add it into this list.
+    while ($device = db_fetch_object($query)) {
+      //Get the capabilities and unserialize.
+      $capabilities = unserialize($device->capabilities);
+      //If we are a tablet, or wireless device, or device has a touchscreen pointing method, or the device claims it can support the web, let in the exclusion list.
+      if ($capabilities['product_info']['is_tablet'] || $capabilities['product_info']['is_wireless_device'] || $capabilities['product_info']['pointing_method'] == 'touchscreen' || $capabilities['product_info']['device_claims_web_support']) {
+        //Handle NULL brand names.
+        $device->brand_name = (empty($device->brand_name)) ? 'Unknown' : $device->brand_name;
+        //Set our label to include the model name and the fall back for this device without a version id attached.
+        $device->id = preg_replace('/_ver[0-9a-zA-z]+/i', '', $device->id);
+        $label['@model']     = $device->model_name;
+        $label['!fall_back'] = '<div class="device-id"><small>id: ' .$device->id .'</small></div>';
+        //Set our devices as an array piece.
+
+        $devices[$device->brand_name][$device->id] = t('@model !fall_back', $label);
+        //Set a form variable, for our devices.
+        if ($op == 'form') {
+          //Get the default values.
+          $default_values = !empty($options['detect_mobile']) ? $options['detect_mobile'][$device->brand_name] : array_keys($devices[$device->brand_name]);
+          $form['detect_mobile'][$device->brand_name] = array(
+            '#title'         => t($device->brand_name),
+            '#description'   => t('To ignore a device, check the box next to it. Ignored devices are in orange, and will not trigger this condition.'),
+            '#type'          => 'checkboxes',
+            '#options'       => $devices[$device->brand_name],
+            '#default_value' => $default_values,
+            '#attributes'    => array('class' => 'context-condition-detect-mobile-options-form-devices' .$state),
+            '#suffix'        => '<hr />',
+          );
+        }
+      }
+    }
+    ksort($form['detect_mobile']);
+    //Switch $op, if we need a form fromt he devices list, or just the devices array.
+    switch ($op) {
+      case 'form':
+        //Return the form if we need a form.
+        return $form;
+        break;
+      default:
+        return $devices;
+    }
+  }
+
+  /**
+   *
+   * @global <type> $wurfl_device
+   * @param <type> $options
+   * @return <type>
+   */
+  protected function detect($options = NULL) {
+    //Operating Systems we want to ignore.
+    $this->os = array(
+      'Windows',
+      'Macintosh',
+      'Linux',
+      'FreeBSD',
+      'Solaris',
+    );
+    //Crawlers.
+    $this->crawlers = array(
+      'bot',
+      'slurp',
+      'spider',
+      'crawl'
+    );
+    $ignore   = array_merge($this->os, $this->crawlers);
+    //Turn the ignore array into a piped preg_match query.
+    $ignore = implode('|', $ignore);
+    //If we match anything on the ignore list, and do not have mobile in the user agent string, return false.
+    if (preg_match('/('.$ignore.')/i', $_SERVER['HTTP_USER_AGENT'], $matches) && !strstr(strtoupper($_SERVER['HTTP_USER_AGENT']), 'MOBILE')) {
+      //Return Not a mobile device.
+      return FALSE;
+    } else {
+      global $wurfl_device;
+      //Handle NULL brand names.
+      $wurfl_device->capabilities['brand_name'] = (empty($wurfl_device->capabilities['brand_name'])) ? 'Unknown' : $wurfl_device->capabilities['brand_name'];
+      //Sanitize fall back.
+      $fallback = $wurfl_device->capabilities['fall_back'];
+      $fallback = preg_replace('/_ver[0-9a-zA-z]+/i', '', $fallback);
+      //If the value is zero (0) then we are ignoring this item.
+      if (isset($options[$wurfl_device->capabilities['brand_name']][$fallback]) && $options[$wurfl_device->capabilities['brand_name']][$fallback] == 0) {
+        //Returned Mobile device, ignored.
+        return 'IGNORED';
+      } else {
+        //Return is a mobile device.
+        return TRUE;
       }
     }
   }

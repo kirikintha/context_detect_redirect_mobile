@@ -1,0 +1,16 @@
+/** Admin Styles **/
+.context-condition-detect-mobile-options-form-devices .form-item {
+  display: block;
+  float: left;
+  width: 30%;
+  margin:5px !important;
+}
+
+.context-condition-detect-mobile-options-form-devices .form-item .device-id {
+  text-align: center;
+}
+
+.context-condition-detect-mobile-options-form-error {
+  color:#965;
+  background-color:#ffe4e0;
+}

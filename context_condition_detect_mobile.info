@@ -1,7 +1,0 @@
-name           = "Context: Mobile Detection And Redirection"
-description    = "Adds a condition to detect mobile devices, including an exclusion list based on the wurfl mobile device detection. Also, adds a reaction for redirecting mobile users to a mobile page of your choice. Depends on Context 3 and WURFL."
-package        = "Context"
-dependencies[] = context
-dependencies[] = wurfl
-core           = "6.x"
-version        = "6.x-1.0-beta1"
