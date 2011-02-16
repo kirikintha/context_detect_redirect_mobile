@@ -22,6 +22,16 @@ class context_reaction_redirect_to_mobile extends context_reaction {
         '#required'         => TRUE,
         '#element_validate' => array('_redirect_to_mobile_validate'),
       ),
+      'preserve_original_destination' => array(
+        '#type' => 'radios',
+        '#title' => t('Preserve Destination'),
+        '#description' => t('If a mobile device lands on a NON-mobile page, and there IS a mobile page, then redirect to that page. OR, if the mobile device lands on a NON-mobile Page, FORCE the mobile page to always redirect to the above BASE URL.'),
+        '#options'     => array(
+          0 => t('FORCE Redirect To Mobile Base URL only'),
+          1 => t('Redirect to the destination URL'),
+        ),
+        '#default_value' => isset($values['preserve_original_destination']) ? $values['preserve_original_destination'] : 0,
+      ),
     );
     return $form;
   }
@@ -41,7 +51,7 @@ class context_reaction_redirect_to_mobile extends context_reaction {
         //We need to get the destination to which you are going to, using q= because this is your entry point to Drupal.
         //We then do a quick check to see if the $values['redirect_to_mobile'] uri has a Drupal equivilent, if it does, go to that url, if not - go to the base url.
         $destination = url($values['redirect_to_mobile'] . url($_GET['q']));
-        if (drupal_lookup_path('alias', $destination)) {
+        if (drupal_lookup_path('alias', $destination) && $values['preserve_original_destination'] != 0) {
           //If we have a valid path, go to that path.
           drupal_goto($destination);
         } else {

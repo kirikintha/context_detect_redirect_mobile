@@ -95,7 +95,6 @@ class context_condition_detect_mobile extends context_condition {
         $label['@model']     = $device->model_name;
         $label['!fall_back'] = '<div class="device-id"><small>id: ' .$device->id .'</small></div>';
         //Set our devices as an array piece.
-
         $devices[$device->brand_name][$device->id] = t('@model !fall_back', $label);
         //Set a form variable, for our devices.
         if ($op == 'form') {
@@ -107,13 +106,17 @@ class context_condition_detect_mobile extends context_condition {
             '#type'          => 'checkboxes',
             '#options'       => $devices[$device->brand_name],
             '#default_value' => $default_values,
-            '#attributes'    => array('class' => 'context-condition-detect-mobile-options-form-devices' .$state),
+            '#attributes'    => array(
+                'class' => 'context-condition-detect-mobile-options-form-devices',
+            ),
             '#suffix'        => '<hr />',
           );
         }
       }
     }
-    ksort($form['detect_mobile']);
+    if (is_array($form['detect_mobile'])) {
+      ksort($form['detect_mobile']);
+    }
     //Switch $op, if we need a form fromt he devices list, or just the devices array.
     switch ($op) {
       case 'form':
