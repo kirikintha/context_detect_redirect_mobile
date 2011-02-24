@@ -114,7 +114,7 @@ class context_condition_detect_mobile extends context_condition {
         }
       }
     }
-    if (is_array($form['detect_mobile'])) {
+    if (!empty($form['detect_mobile']) && is_array($form['detect_mobile'])) {
       ksort($form['detect_mobile']);
     }
     //Switch $op, if we need a form fromt he devices list, or just the devices array.
