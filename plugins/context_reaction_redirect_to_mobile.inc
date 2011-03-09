@@ -43,7 +43,7 @@ class context_reaction_redirect_to_mobile extends context_reaction {
    */
   function execute() {
     foreach (context_active_contexts() as $context) {
-      if (!empty($context->reactions[$this->plugin]['redirect_to_mobile'])) {
+      if (!empty($context->reactions[$this->plugin]['redirect_to_mobile']) && strstr($_SERVER['SCRIPT_NAME'], 'index.php')) {
         //Saved Values.
         $values = $this->fetch_from_context($context);
         //If we are using a node, then the path will not be an alias, so we need to find the mobile alias for that path.

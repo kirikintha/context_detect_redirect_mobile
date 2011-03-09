@@ -3,7 +3,7 @@
 /**
  * Implementation of hook_install().
  */
-function context_detect_redirect_mobile_install() {
+function context_detect_redirect_mobile_enable() {
   // Set weight to 99 so we're one of the last modules to run.
   db_query("UPDATE {system} SET weight = 99 WHERE name = 'context_detect_redirect_mobile'");
 }

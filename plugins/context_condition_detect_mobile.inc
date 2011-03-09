@@ -135,7 +135,16 @@ class context_condition_detect_mobile extends context_condition {
    * @return <type>
    */
   protected function detect($options = NULL) {
-    //Operating Systems we want to ignore.
+    //If our script name does not fall under index.php, then ALWAYS return FALSE
+    //This will keep maintenance procedures working properly, when called outside of the normal drupal root.
+    if (!strstr($_SERVER['SCRIPT_NAME'], 'index.php')) {
+      return FALSE;
+    }
+    //User Agents to ignore. @todo - create a way to make this an admin interface.
+    $this->ignoreAgents = array(
+      'ipad',
+    );
+    //Operating System User Agents to match. @todo - create a way to make this an admin interface.
     $this->os = array(
       'Windows',
       'Macintosh',
@@ -143,18 +152,33 @@ class context_condition_detect_mobile extends context_condition {
       'FreeBSD',
       'Solaris',
     );
-    //Crawlers.
+    //Crawlers. @todo - create a way to make this an admin interface.
     $this->crawlers = array(
       'bot',
       'slurp',
       'spider',
-      'crawl'
+      'crawl',
+      'sniff',
+      'altavista',
+      'scooter',
+      'tarantula',
+      'teoma',
+      'fast',
+      'mediapartners-google',
+      'nutch',
+      'yahoofeedseeker',
+      'googleimages',
+      'yandeximages',
+      'libwww-perl',
+      'simpy',
+      'aspsearch',
+      'scoutjet',
     );
-    $ignore   = array_merge($this->os, $this->crawlers);
+    $ignore = array_merge($this->os, $this->crawlers);
     //Turn the ignore array into a piped preg_match query.
     $ignore = implode('|', $ignore);
     //If we match anything on the ignore list, and do not have mobile in the user agent string, return false.
-    if (preg_match('/('.$ignore.')/i', $_SERVER['HTTP_USER_AGENT'], $matches) && !strstr(strtoupper($_SERVER['HTTP_USER_AGENT']), 'MOBILE')) {
+    if (preg_match('/('.$ignore.')/i', $_SERVER['HTTP_USER_AGENT'], $matches) && !strstr(strtoupper($_SERVER['HTTP_USER_AGENT']), 'MOBILE') || empty($_SERVER['HTTP_USER_AGENT'])) {
       //Return Not a mobile device.
       return FALSE;
     } else {
